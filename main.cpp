@@ -12,213 +12,65 @@
 #include <fstream>
 #include <SFML/Audio.hpp>
 #include <SFML/Audio.hpp>
+#include <ctime>
+#include <iomanip>
+#include <sstream>
+#include <cstdlib>
 
-// Variables globales pour l'audio
+//variables globales:
+bool gameStarted = false;
+time_t gameStartTime;
+time_t gameEndTime;
 sf::Music backgroundMusic;
 sf::SoundBuffer jumpSoundBuffer;
 sf::Sound jumpSound;
 sf::Music victoryMusic;
-
 bool isVictoryReached = false;
+GLuint textureID;
+float playerX = 48.0f, playerY = 3.5f, playerZ = -48.0f;
+float playerAngle = 0.0f;
+float ballRotation = 0.0f;
+const float ballRadius = 0.5f;
+bool isGrounded = false;
+float verticalVelocity = 0.0f;
+const float GRAVITY = -100.8f;
+bool moveForward = false, moveBackward = false, moveLeft = false, moveRight = false;
+bool isJumping = false;
+float jumpHeight = 3.5f;
+float jumpProgress = 0.0f, M_PI=3.141592653589793 ;
 
-// Fonction pour initialiser l'audio
+//structures rÃ©utilisables:
+struct Obstacle {
+    float x, y, z;
+    float width, height, depth;
+    int type;
+};
+struct Tree {
+    float x, z;
+};
+std::vector<Obstacle> obstacles;
+std::vector<Tree> trees;
+
+//fonctions types "initialisations:"
 void initAudio() {
-    // Use raw string literal or double backslashes
-    if (!backgroundMusic.openFromFile("C:\\Users\\ouass_62l6kkk\\OneDrive\\Documents\\Infographie\\rollin\\music.wav")) {
+    if (!backgroundMusic.openFromFile("music.wav")) {
         std::cerr << "Erreur : Impossible de charger music.mp3" << std::endl;
         //exit(EXIT_FAILURE);
     }
     backgroundMusic.setLoop(true);
     backgroundMusic.play();
 
-    if (!jumpSoundBuffer.loadFromFile("C:\\Users\\ouass_62l6kkk\\OneDrive\\Documents\\Infographie\\rollin\\jump.wav")) {
+    if (!jumpSoundBuffer.loadFromFile("jump.wav")) {
         std::cerr << "Erreur : Impossible de charger jump.mp3" << std::endl;
         //exit(EXIT_FAILURE);
     }
     jumpSound.setBuffer(jumpSoundBuffer);
 
-    if (!victoryMusic.openFromFile("C:\\Users\\ouass_62l6kkk\\OneDrive\\Documents\\Infographie\\rollin\\victory.wav")) {
+    if (!victoryMusic.openFromFile("victory.wav")) {
         std::cerr << "Erreur : Impossible de charger victory.mp3" << std::endl;
         exit(EXIT_FAILURE);
     }
 }
-
-// Structure pour représenter un obstacle
-struct Obstacle {
-    float x, y, z;      // Position
-    float width, height, depth; // Dimensions
-    int type;           // Type d'obstacle (0: cube, 1: escalier, 2: plateforme, 3: sol)
-};
-
-// Variables globales
-GLuint textureID;
-//float playerX = 48.0f, playerY = 3.5f, playerZ = -48.0f;
-float playerX = -7.0f, playerY = 17.5f, playerZ = 42.0f;
-float playerAngle = 0.0f;
-float ballRotation = 0.0f;
-const float ballRadius = 0.5f;
-
-// Nouveaux paramètres pour la gestion des collisions et de la gravité
-bool isGrounded = false;
-float verticalVelocity = 0.0f;
-const float GRAVITY = -100.8f;
-
-// Mouvements
-bool moveForward = false, moveBackward = false, moveLeft = false, moveRight = false;
-bool isJumping = false;
-float jumpHeight = 3.5f;
-float jumpProgress = 0.0f, M_PI=3.141592653589793 ;
-
-// Vecteur d'obstacles
-std::vector<Obstacle> obstacles;
-
-// Fonction pour initialiser les obstacles
-// Fonction pour initialiser les obstacles
-void initObstacles() {
-    // Sol
-    Obstacle ground = {0.0f, 0.0f, 0.0f, 100.0f, 0.1f, 100.0f, 3};
-    obstacles.push_back(ground);
-
-    // Plateformes flottantes
-    Obstacle platform1 = {47.0f, 2.5f, -43.0f, 4.0f, 0.5f, 4.0f, 2};
-    Obstacle platform2 = {47.0f, 5.0f, -37.0f, 4.0f, 0.5f, 4.0f, 2};
-    Obstacle platform3 = {43.0f, 7.0f, -30.0f, 4.0f, 0.5f, 4.0f, 2};
-    Obstacle platform4 = {39.0f, 9.0f, -25.0f,4.0f, 0.5f, 4.0f, 2}; // Réduction taille
-    Obstacle platform5 = {35.0f, 12.0f, -20.0f, 4.0f, 0.5f, 4.0f, 2}; // Saut légèrement plus long
-    Obstacle platform6 = {39.0f, 15.0f, -15.0f, 4.0f, 0.5f, 4.0f, 2}; // Plus haut et plus loin
-    Obstacle platform7 = {43.0f, 17.0f, -10.0f, 4.0f, 0.5f, 4.0f, 2}; // Très petite plateforme
-    Obstacle platform8 = {47.0f, 20.0f, -7.0f, 4.0f, 0.5f, 4.0f, 2};
-    Obstacle platform9 = {43.0f, 23.0f, -5.0f, 3.5f, 0.5f, 3.5f, 2};
-    Obstacle platform10 = {40.0f, 26.0f, 0.0f, 2.0f, 0.5f, 2.0f, 2};
-    Obstacle platform11 = {37.0f, 28.0f, 5.0f, 3.5f, 0.5f, 3.5f, 2};
-    Obstacle platform12 = {32.0f, 28.0f, 12.0f, 3.0f, 0.5f, 3.0f, 2}; //28 = maxY
-    Obstacle platform13 = {30.0f, 15.0f, 20.0f, 3.0f, 0.5f, 3.0f, 2};
-    Obstacle platform14 = {35.0f, 15.0f, 25.0f, 3.0f, 0.5f, 3.0f, 2};
-    Obstacle platform15 = {40.0f, 15.0f, 30.0f, 2.0f, 0.5f, 2.0f, 2};
-    Obstacle platform16 = {45.0f, 15.0f, 35.0f, 1.5f, 0.5f, 1.5f, 2};
-    Obstacle platform17 = {45.0f, 12.0f, 42.0f, 3.0f, 0.5f, 3.0f, 2};
-    Obstacle platform19 = {47.5f, 12.0f, 48.0f, 3.0f, 0.5f, 1.5f, 2};
-    Obstacle platform20 = {44.0f, 15.0f, 47.5f, 2.0f, 0.5f, 2.0f, 2};
-    Obstacle platform22 = {40.0f, 15.0f, 48.0f, 1.8f, 0.5f, 1.8f, 2};
-    Obstacle platform23 = {35.0f, 15.0f, 45.5f, 1.7f, 0.5f, 1.7f, 2};
-    Obstacle platform24 = {30.0f, 15.0f, 47.5f, 1.6f, 0.5f, 1.6f, 2};
-    Obstacle platform25 = {25.0f, 15.0f, 45.5f, 1.5f, 0.5f, 1.5f, 2};
-    Obstacle platform26 = {20.0f, 15.0f, 45.0f, 1.4f, 0.5f, 1.4f, 2};
-    Obstacle platform27 = {15.0f, 15.0f, 48.0f, 1.3f, 0.5f, 1.3f, 2};
-    Obstacle platform28 = {10.0f, 15.0f, 45.0f, 1.2f, 0.5f, 1.2f, 2};
-    Obstacle platform29 = {5.0f, 15.0f, 48.0f, 1.1f, 0.5f, 1.1f, 2};
-    Obstacle platform30 = {0.0f, 15.0f, 45.0f, 1.0f, 0.5f, 1.0f, 2};
-    Obstacle platform31 = {-7.0f, 15.0f, 42.0f, 3.0f, 0.5f, 3.0f, 2};
-    Obstacle platform32 = {-10.0f, 10.0f, 30.1f, 6.0f, 0.5f, 4.0f, 4};
-
-    obstacles.push_back(platform1);
-    obstacles.push_back(platform2);
-    obstacles.push_back(platform3);
-    // Ajouter les nouvelles plateformes
-    obstacles.push_back(platform4);
-    obstacles.push_back(platform5);
-    obstacles.push_back(platform6);
-    obstacles.push_back(platform7);
-    obstacles.push_back(platform8);
-    obstacles.push_back(platform9);
-    obstacles.push_back(platform10);
-    obstacles.push_back(platform11);
-    obstacles.push_back(platform12);
-    obstacles.push_back(platform13);
-    obstacles.push_back(platform14);
-    obstacles.push_back(platform15);
-    obstacles.push_back(platform16);
-    obstacles.push_back(platform17);
-    obstacles.push_back(platform19);
-    obstacles.push_back(platform20);
-    obstacles.push_back(platform22);
-    obstacles.push_back(platform23);
-    obstacles.push_back(platform24);
-    obstacles.push_back(platform25);
-    obstacles.push_back(platform26);
-    obstacles.push_back(platform27);
-    obstacles.push_back(platform28);
-    obstacles.push_back(platform29);
-    obstacles.push_back(platform30);
-    obstacles.push_back(platform31);
-    obstacles.push_back(platform32);
-}
-
-
-bool checkCollision(float nextX, float nextY, float nextZ) {
-    const float playerSize = ballRadius;
-
-    // Vérifier les limites de la scène
-    if (nextX - playerSize < -50.0f || nextX + playerSize > 50.0f ||
-        nextZ - playerSize < -50.0f || nextZ + playerSize > 50.0f) {
-        return true;
-    }
-
-    for (const auto& obstacle : obstacles) {
-        // Calculer les limites de l'obstacle
-        float obstacleMinX = obstacle.x - obstacle.width/2;
-        float obstacleMaxX = obstacle.x + obstacle.width/2;
-        float obstacleMinY = obstacle.y;
-        float obstacleMaxY = obstacle.y + obstacle.height;
-        float obstacleMinZ = obstacle.z - obstacle.depth/2;
-        float obstacleMaxZ = obstacle.z + obstacle.depth/2;
-
-        // Calcul des limites de la balle
-        float ballMinX = nextX - playerSize;
-        float ballMaxX = nextX + playerSize;
-        float ballMinY = nextY - playerSize;
-        float ballMaxY = nextY + playerSize;
-        float ballMinZ = nextZ - playerSize;
-        float ballMaxZ = nextZ + playerSize;
-
-        // Vérifier la collision sur tous les axes
-        bool collideX = (ballMaxX > obstacleMinX) && (ballMinX < obstacleMaxX);
-        bool collideY = (ballMaxY > obstacleMinY) && (ballMinY < obstacleMaxY);
-        bool collideZ = (ballMaxZ > obstacleMinZ) && (ballMinZ < obstacleMaxZ);
-
-        // Si collision sur tous les axes
-        if (collideX && collideY && collideZ) {
-            // Gestion différente selon le type d'obstacle
-            switch(obstacle.type) {
-                case 0: // Cube - collision totale
-                    if (nextY - playerSize <= obstacleMaxY) {
-                        return true;
-                    }
-                    break;
-
-                case 1: // Escalier - collision complexe
-                    // Autoriser le passage si au-dessus de l'escalier
-                    if (nextY > obstacleMaxY) {
-                        return false;
-                    }
-                    return true;
-
-                case 2: // Plateforme
-                    if (nextY - playerSize <= obstacleMaxY) {
-                        return true;
-                    }
-                    break;
-
-                case 3: // Sol - collision horizontale uniquement
-                    if (nextY - playerSize <= obstacleMaxY) {
-                        return true;
-                    }
-                    break;
-                case 4: // Case finale
-                    if (nextY - playerSize <= obstacleMaxY) {
-                        return true;
-                    }
-                    break;
-            }
-        }
-    }
-
-    // Pas de collision
-    return false;
-}
-
-
-// Charger la texture
 bool loadTexture(const char* filename) {
     FILE* file = fopen(filename, "rb");
     if (!file) {
@@ -253,8 +105,139 @@ bool loadTexture(const char* filename) {
     delete[] data;
     return true;
 }
+void initObstacles() {
+    // sol
+    Obstacle ground = {0.0f, 0.0f, 0.0f, 100.0f, 0.1f, 100.0f, 3};
+    obstacles.push_back(ground);
 
-// Fonction pour dessiner le personnage
+    // plateformes flottantes
+    Obstacle platform1 = {47.0f, 2.5f, -43.0f, 4.0f, 0.5f, 4.0f, 2};
+    Obstacle platform2 = {47.0f, 5.0f, -37.0f, 4.0f, 0.5f, 4.0f, 2};
+    Obstacle platform3 = {43.0f, 7.0f, -30.0f, 4.0f, 0.5f, 4.0f, 2};
+    Obstacle platform4 = {39.0f, 9.0f, -25.0f,4.0f, 0.5f, 4.0f, 2};
+    Obstacle platform5 = {35.0f, 12.0f, -20.0f, 4.0f, 0.5f, 4.0f, 2};
+    Obstacle platform6 = {39.0f, 15.0f, -15.0f, 4.0f, 0.5f, 4.0f, 2};
+    Obstacle platform7 = {43.0f, 17.0f, -10.0f, 4.0f, 0.5f, 4.0f, 2};
+    Obstacle platform8 = {47.0f, 20.0f, -7.0f, 4.0f, 0.5f, 4.0f, 2};
+    Obstacle platform9 = {43.0f, 23.0f, -5.0f, 3.5f, 0.5f, 3.5f, 2};
+    Obstacle platform10 = {40.0f, 26.0f, 0.0f, 2.0f, 0.5f, 2.0f, 2};
+    Obstacle platform11 = {37.0f, 28.0f, 5.0f, 3.5f, 0.5f, 3.5f, 2};
+    Obstacle platform12 = {32.0f, 28.0f, 12.0f, 3.0f, 0.5f, 3.0f, 2};
+    Obstacle platform13 = {30.0f, 15.0f, 20.0f, 3.0f, 0.5f, 3.0f, 2};
+    Obstacle platform14 = {35.0f, 15.0f, 25.0f, 3.0f, 0.5f, 3.0f, 2};
+    Obstacle platform15 = {40.0f, 15.0f, 30.0f, 2.0f, 0.5f, 2.0f, 2};
+    Obstacle platform16 = {45.0f, 15.0f, 35.0f, 1.5f, 0.5f, 1.5f, 2};
+    Obstacle platform17 = {45.0f, 12.0f, 42.0f, 3.0f, 0.5f, 3.0f, 2};
+    Obstacle platform19 = {47.5f, 12.0f, 48.0f, 3.0f, 0.5f, 1.5f, 2};
+    Obstacle platform20 = {44.0f, 15.0f, 47.5f, 2.0f, 0.5f, 2.0f, 2};
+    Obstacle platform22 = {40.0f, 15.0f, 48.0f, 1.8f, 0.5f, 1.8f, 2};
+    Obstacle platform23 = {35.0f, 15.0f, 45.5f, 1.7f, 0.5f, 1.7f, 2};
+    Obstacle platform24 = {30.0f, 15.0f, 47.5f, 1.6f, 0.5f, 1.6f, 2};
+    Obstacle platform25 = {25.0f, 15.0f, 45.5f, 1.5f, 0.5f, 1.5f, 2};
+    Obstacle platform26 = {20.0f, 15.0f, 45.0f, 1.4f, 0.5f, 1.4f, 2};
+    Obstacle platform27 = {15.0f, 15.0f, 48.0f, 1.3f, 0.5f, 1.3f, 2};
+    Obstacle platform28 = {10.0f, 15.0f, 45.0f, 1.2f, 0.5f, 1.2f, 2};
+    Obstacle platform29 = {5.0f, 15.0f, 48.0f, 1.1f, 0.5f, 1.1f, 2};
+    Obstacle platform30 = {0.0f, 15.0f, 45.0f, 1.0f, 0.5f, 1.0f, 2};
+    Obstacle platform31 = {-7.0f, 15.0f, 42.0f, 3.0f, 0.5f, 3.0f, 2};
+    Obstacle platform32 = {-10.0f, 10.0f, 30.1f, 6.0f, 0.5f, 4.0f, 4};
+
+    obstacles.push_back(platform1);
+    obstacles.push_back(platform2);
+    obstacles.push_back(platform3);
+    obstacles.push_back(platform4);
+    obstacles.push_back(platform5);
+    obstacles.push_back(platform6);
+    obstacles.push_back(platform7);
+    obstacles.push_back(platform8);
+    obstacles.push_back(platform9);
+    obstacles.push_back(platform10);
+    obstacles.push_back(platform11);
+    obstacles.push_back(platform12);
+    obstacles.push_back(platform13);
+    obstacles.push_back(platform14);
+    obstacles.push_back(platform15);
+    obstacles.push_back(platform16);
+    obstacles.push_back(platform17);
+    obstacles.push_back(platform19);
+    obstacles.push_back(platform20);
+    obstacles.push_back(platform22);
+    obstacles.push_back(platform23);
+    obstacles.push_back(platform24);
+    obstacles.push_back(platform25);
+    obstacles.push_back(platform26);
+    obstacles.push_back(platform27);
+    obstacles.push_back(platform28);
+    obstacles.push_back(platform29);
+    obstacles.push_back(platform30);
+    obstacles.push_back(platform31);
+    obstacles.push_back(platform32);
+}
+void initTrees() {
+    srand(static_cast<unsigned int>(time(nullptr)));
+
+    for (int i = 0; i < 10; ++i) {
+        Tree tree;
+        tree.x = static_cast<float>(rand() % 101 - 50);
+        tree.z = static_cast<float>(rand() % 101 - 50);
+        trees.push_back(tree);
+    }
+}
+void init() {
+    initObstacles();
+    initAudio();
+    initTrees();
+    glEnable(GL_DEPTH_TEST);
+    glEnable(GL_LIGHTING);
+    glEnable(GL_LIGHT0);
+    glEnable(GL_COLOR_MATERIAL);
+    glColorMaterial(GL_FRONT_AND_BACK, GL_AMBIENT_AND_DIFFUSE);
+    glClearColor(0.8f, 0.9f, 1.0f, 1.0f);
+    glEnable(GL_LIGHTING);
+    glEnable(GL_LIGHT0);
+    GLfloat lightPos[] = {0.0f, 10.0f, 0.0f, 1.0f};
+    glLightfv(GL_LIGHT0, GL_POSITION, lightPos);
+
+    if (!loadTexture("ball.bmp")) {
+        std::cout << "Erreur : Impossible de charger le modÃ¨le ball.bmp" << std::endl;
+        exit(EXIT_FAILURE);
+    }
+}
+
+
+//fonctions type "drawing":
+void drawTree(const Tree& tree) {
+    glPushMatrix();
+    glTranslatef(tree.x, 0.0f, tree.z);
+
+    glColor3f(0.55f, 0.27f, 0.07f);
+    GLUquadric* quad = gluNewQuadric();
+    glPushMatrix();
+    glTranslatef(0.0f, 3.0f, 0.0f);
+    glRotatef(90.0f,1.0f,0.0f,0.0f);
+    gluCylinder(quad, 0.3f, 0.3f, 4.0f, 20, 20);
+    glPopMatrix();
+
+    glColor3f(0.0f, 0.8f, 0.0f);
+    glPushMatrix();
+    glTranslatef(0.0f, 3.0f, 0.0f);
+    glutSolidSphere(1.0f, 20, 20);
+    glTranslatef(-0.7f, 0.5f, -0.7f);
+    glutSolidSphere(0.8f, 20, 20);
+    glTranslatef(1.4f, 0.0f, 0.0f);
+    glutSolidSphere(0.8f, 20, 20);
+    glTranslatef(-0.7f, 0.0f, 1.4f);
+    glutSolidSphere(0.8f, 20, 20);
+    glPopMatrix();
+
+    gluDeleteQuadric(quad);
+    glPopMatrix();
+}
+void drawTrees() {
+    for (const auto& tree : trees) {
+        drawTree(tree);
+    }
+}
 void drawPlayer() {
     glPushMatrix();
     glTranslatef(playerX, playerY, playerZ);
@@ -262,7 +245,7 @@ void drawPlayer() {
     glRotatef(playerAngle, 0.0f, 1.0f, 0.0f);
     glEnable(GL_TEXTURE_2D);
     glBindTexture(GL_TEXTURE_2D, textureID);
-    glColor3f(1.0f, 0.5f, 0.0f);
+    glColor3f(1.0f, 1.0f, 1.0f);
     GLUquadric* quad = gluNewQuadric();
     gluQuadricTexture(quad, GL_TRUE);
     gluSphere(quad, 0.5f, 32, 32);
@@ -270,19 +253,15 @@ void drawPlayer() {
     glDisable(GL_TEXTURE_2D);
     glPopMatrix();
 }
-
-// Fonction pour dessiner les obstacles
 void drawObstacles() {
     for (const auto& obstacle : obstacles) {
         glPushMatrix();
-
-        // Couleur différente selon le type d'obstacle
         switch(obstacle.type) {
-            case 0: glColor3f(1.0f, 0.0f, 0.0f); break;   // Cubes en rouge
-            case 1: glColor3f(0.0f, 1.0f, 0.0f); break;   // Escaliers en vert
-            case 2: glColor3f(1.0f, 0.9f, 1.0f); break;   // Plateformes en blanc
-            case 3: glColor3f(0.0f, 0.1f, 0.0f); break;   // Sol en vert clair
-            case 4: glColor3f(1.0f, 0.0f, 0.0f); break;   // case finale en rouge
+            case 0: glColor3f(1.0f, 0.0f, 0.0f); break;
+            case 1: glColor3f(0.0f, 1.0f, 0.0f); break;
+            case 2: glColor3f(1.0f, 0.9f, 1.0f); break;
+            case 3: glColor3f(0.0f, 0.1f, 0.0f); break;
+            case 4: glColor3f(1.0f, 0.0f, 0.0f); break;
         }
 
         glTranslatef(obstacle.x, obstacle.y, obstacle.z);
@@ -293,45 +272,104 @@ void drawObstacles() {
         glPopMatrix();
     }
 }
-
-// Fonction d'affichage
-void display() {
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-    glLoadIdentity();
-
-    // Position de la caméra à la troisième personne
-    float camX = playerX - 5.0f * sin(playerAngle * M_PI / 180.0f);
-    float camY = playerY + 3.0f;
-    float camZ = playerZ - 5.0f * cos(playerAngle * M_PI / 180.0f);
-    gluLookAt(camX, camY, camZ, // Position de la caméra
-              playerX, playerY, playerZ, // Point regardé (le joueur)
-              0.0f, 1.0f, 0.0f); // Vecteur "haut"
-
-    // Dessiner le personnage et les obstacles
-    drawPlayer();
-    drawObstacles();
-
-    glutSwapBuffers();
-}
-
-// Fonction de redimensionnement de la fenêtre
-void reshape(int w, int h) {
-    if (h == 0) h = 1;
-    float aspect = (float)w / (float)h;
-
-    glViewport(0, 0, w, h);
-
+void renderText(float x, float y, const std::string& text) {
     glMatrixMode(GL_PROJECTION);
+    glPushMatrix();
     glLoadIdentity();
-    gluPerspective(60.0f, aspect, 1.0f, 100.0f);
+    int w = glutGet(GLUT_WINDOW_WIDTH);
+    int h = glutGet(GLUT_WINDOW_HEIGHT);
+    gluOrtho2D(0, w, h, 0);
 
     glMatrixMode(GL_MODELVIEW);
+    glPushMatrix();
+    glLoadIdentity();
+
+    glDisable(GL_DEPTH_TEST);
+    glColor3f(1.0f, 1.0f, 1.0f);
+    glRasterPos2f(x, y);
+
+    for (char c : text) {
+        glutBitmapCharacter(GLUT_BITMAP_HELVETICA_18, c);
+    }
+
+    glEnable(GL_DEPTH_TEST);
+
+    glMatrixMode(GL_PROJECTION);
+    glPopMatrix();
+    glMatrixMode(GL_MODELVIEW);
+    glPopMatrix();
 }
 
-// Fonction de gestion des touches clavier
+//fonctions + techniques relatives au dÃ©placements/collisions/sauts mise a jour
+bool checkCollision(float nextX, float nextY, float nextZ) {
+    const float playerSize = ballRadius;
+    if(!isVictoryReached){
+        if (nextX - playerSize < -50.0f || nextX + playerSize > 50.0f ||
+            nextZ - playerSize < -50.0f || nextZ + playerSize > 50.0f) {
+            return true;
+        }
+
+        for (const auto& obstacle : obstacles) {
+            float obstacleMinX = obstacle.x - obstacle.width/2;
+            float obstacleMaxX = obstacle.x + obstacle.width/2;
+            float obstacleMinY = obstacle.y;
+            float obstacleMaxY = obstacle.y + obstacle.height;
+            float obstacleMinZ = obstacle.z - obstacle.depth/2;
+            float obstacleMaxZ = obstacle.z + obstacle.depth/2;
+
+            float ballMinX = nextX - playerSize;
+            float ballMaxX = nextX + playerSize;
+            float ballMinY = nextY - playerSize;
+            float ballMaxY = nextY + playerSize;
+            float ballMinZ = nextZ - playerSize;
+            float ballMaxZ = nextZ + playerSize;
+
+            bool collideX = (ballMaxX > obstacleMinX) && (ballMinX < obstacleMaxX);
+            bool collideY = (ballMaxY > obstacleMinY) && (ballMinY < obstacleMaxY);
+            bool collideZ = (ballMaxZ > obstacleMinZ) && (ballMinZ < obstacleMaxZ);
+
+            if (collideX && collideY && collideZ) {
+                switch(obstacle.type) {
+                    case 0:
+                        if (nextY - playerSize <= obstacleMaxY) {
+                            return true;
+                        }
+                        break;
+
+                    case 1:
+                        if (nextY > obstacleMaxY) {
+                            return false;
+                        }
+                        return true;
+
+                    case 2:
+                        if (nextY - playerSize <= obstacleMaxY) {
+                            return true;
+                        }
+                        break;
+
+                    case 3:
+                        if (nextY - playerSize <= obstacleMaxY) {
+                            return true;
+                        }
+                        break;
+                    case 4:
+                        if (nextY - playerSize <= obstacleMaxY) {
+                            return true;
+                        }
+                        break;
+                }
+            }
+        }
+}
+        // pas de collision
+    return false;
+}
+
 void keyboard(unsigned char key, int x, int y) {
+
     switch (key) {
-        case 27: // Touche ESC
+        case 27:
             exit(0);
             break;
         case 'w':
@@ -353,15 +391,16 @@ void keyboard(unsigned char key, int x, int y) {
         case ' ':
             if (isGrounded) {
                 isJumping = true;
-                jumpSound.play(); // Jouer le son de saut
+                jumpSound.play();
             }
             break;
     }
 }
-
-// Fonction de gestion des touches clavier relâchées
 void keyboardUp(unsigned char key, int x, int y) {
     switch (key) {
+        case 27:
+            exit(0);
+            break;
         case 'w':
         case 'W':
             moveForward = false;
@@ -378,32 +417,37 @@ void keyboardUp(unsigned char key, int x, int y) {
         case 'D':
             moveRight = false;
             break;
+
     }
 }
 void update(int value) {
     float speed = 0.2f;
     float distance = 0.0f;
 
-    // Positions potentielles du joueur
     float nextX = playerX;
     float nextY = playerY;
     float nextZ = playerZ;
 
-    // Vérifier si le joueur a atteint la plateforme finale (platform32)
+    //  verification de la cond de victoire
     Obstacle finalPlatform = {-10.0f, 10.0f, 30.1f, 6.0f, 0.5f, 4.0f, 4};
-    if (playerX >= finalPlatform.x - finalPlatform.width/2 &&
-        playerX <= finalPlatform.x + finalPlatform.width/2+1.0 &&
-        playerZ >= finalPlatform.z - finalPlatform.depth/2 &&
-        playerZ <= finalPlatform.z + finalPlatform.depth/2+1.0 &&
+    if (playerX >= finalPlatform.x - finalPlatform.width/2-0.45 &&
+        playerX <= finalPlatform.x + finalPlatform.width/2+0.45 &&
+        playerZ >= finalPlatform.z - finalPlatform.depth/2-0.45 &&
+        playerZ <= finalPlatform.z + finalPlatform.depth/2+0.45 &&
         playerY >= finalPlatform.y &&
-        playerY <= finalPlatform.y + finalPlatform.height+1.0) {
+        playerY <= finalPlatform.y + finalPlatform.height+2.0) {
         if (!isVictoryReached) {
+            gameEndTime = time(nullptr);
             backgroundMusic.stop();
             victoryMusic.play();
             isVictoryReached = true;
+            moveForward = false;
+            moveBackward = false;
+            moveLeft = false;
+            moveRight = false;
+            isJumping = false;
         }
     }
-    // Gestion des mouvements horizontaux
     if (moveForward) {
         nextX += speed * sin(playerAngle * M_PI / 180.0f);
         nextZ += speed * cos(playerAngle * M_PI / 180.0f);
@@ -415,20 +459,16 @@ void update(int value) {
         distance = -speed;
     }
 
-    // Rotation de la balle
     ballRotation += (distance / (2.0f * M_PI * ballRadius)) * 360.0f;
     if (ballRotation > 360.0f) ballRotation -= 360.0f;
     if (ballRotation < 0.0f) ballRotation += 360.0f;
 
-    // Gestion de la gravité
     verticalVelocity += GRAVITY * 0.016f;
     nextY += verticalVelocity * 0.016f;
 
-    // Vérification des collisions
     bool horizontalCollision = checkCollision(nextX, playerY, nextZ);
     bool verticalCollision = checkCollision(playerX, nextY, playerZ);
 
-    // Mise à jour des positions
     if (!horizontalCollision) {
         playerX = nextX;
         playerZ = nextZ;
@@ -437,10 +477,8 @@ void update(int value) {
     if (!verticalCollision) {
         playerY = nextY;
     } else {
-        // En cas de collision verticale, réinitialiser la vélocité verticale
         verticalVelocity = 0.0f;
 
-        // Trouver la position correcte
         for (const auto& obstacle : obstacles) {
             float obstacleMinY = obstacle.y;
             float obstacleMaxY = obstacle.y + obstacle.height;
@@ -452,17 +490,14 @@ void update(int value) {
         }
     }
 
-    // Gestion du saut
     if (isJumping && isGrounded) {
         verticalVelocity = sqrt(2.0f * std::abs(GRAVITY) * jumpHeight);
         isJumping = false;
         isGrounded = false;
     }
 
-    // Vérification si le joueur est au sol
     isGrounded = checkCollision(playerX, playerY - ballRadius, playerZ);
 
-    // Rotation du joueur
     if (moveLeft) {
         playerAngle += 2.0f;
     }
@@ -471,42 +506,57 @@ void update(int value) {
     }
 
     glutPostRedisplay();
-    glutTimerFunc(16, update, 0); // Environ 60 FPS
+    glutTimerFunc(16, update, 0);
 }
 
 
-// Fonction d'initialisation OpenGL
-void init() {
-    initObstacles();
-     initAudio();
-    glEnable(GL_DEPTH_TEST); // Activer le test de profondeur
-    glEnable(GL_LIGHTING);   // Activer l'éclairage
-    glEnable(GL_LIGHT0);     // Activer la première source de lumière
-    glEnable(GL_COLOR_MATERIAL); // Permettre aux couleurs des objets de réagir à la lumière
-    glColorMaterial(GL_FRONT_AND_BACK, GL_AMBIENT_AND_DIFFUSE);
+//relatifs a l'affichage du jeu:
+void display() {
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    glLoadIdentity();
+    float camX = playerX - 5.0f * sin(playerAngle * M_PI / 180.0f);
+    float camY = playerY + 3.0f;
+    float camZ = playerZ - 5.0f * cos(playerAngle * M_PI / 180.0f);
+    gluLookAt(camX, camY, camZ,
+              playerX, playerY, playerZ,
+              0.0f, 1.0f, 0.0f);
 
-    // Couleur d'arrière-plan (ciel)
-    glClearColor(0.8f, 0.9f, 1.0f, 1.0f);
+    drawPlayer();
+    drawObstacles();
+    drawTrees();
 
-    // Configurer la source de lumière
-    glEnable(GL_LIGHTING);
-    glEnable(GL_LIGHT0);
-    GLfloat lightPos[] = {0.0f, 10.0f, 0.0f, 1.0f};
-    glLightfv(GL_LIGHT0, GL_POSITION, lightPos);
+    if (isVictoryReached) {
+        double totalTime = difftime(gameEndTime, gameStartTime);
+        int minutes = static_cast<int>(totalTime) / 60;
+        int seconds = static_cast<int>(totalTime) % 60;
 
-    if (!loadTexture("ball.bmp")) {
-        std::cout << "Erreur : Impossible de charger le modèle ball.bmp" << std::endl;
-        exit(EXIT_FAILURE);
+        std::ostringstream oss;
+        oss << "Bravo! Temps: " << minutes << " min " << seconds << " sec";
+
+        renderText(glutGet(GLUT_WINDOW_WIDTH) / 2 - 150,
+                   glutGet(GLUT_WINDOW_HEIGHT) / 2,
+                   oss.str());
     }
+
+    glutSwapBuffers();
+}
+void reshape(int w, int h) {
+    if (h == 0) h = 1;
+    float aspect = (float)w / (float)h;
+
+    glViewport(0, 0, w, h);
+
+    glMatrixMode(GL_PROJECTION);
+    glLoadIdentity();
+    gluPerspective(60.0f, aspect, 1.0f, 100.0f);
+
+    glMatrixMode(GL_MODELVIEW);
 }
 
-
-// Fonction principale
+//main
 int main(int argc, char** argv) {
-    if (!std::ifstream("ball.bmp")) {
-    std::cout << "Erreur : Fichier ball.bmp introuvable" << std::endl;
-    exit(EXIT_FAILURE);
-}
+    gameStartTime = time(nullptr);
+    gameStarted = true;
     glutInit(&argc, argv);
     glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH);
     glutInitWindowSize(1400, 800);
