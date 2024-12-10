@@ -10,6 +10,7 @@ First of all:
 
 
 Then, make sure to have *GLUT* and *SFML* installed.
+If you want a background music you can import your own by adding a *music.wav* file to your repository
 Now you can either use CodeBlocks and simply build and run the cbp file. Or you can use a linux terminal and run it with the compiler of your choice (I used GCC).
 
 ## More:
